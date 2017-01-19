@@ -1,0 +1,8 @@
+# Cooking Classification gitignore
+
+*.jpg
+*.pkl
+*.npy
+*.tsv
+
+__pycache__/
