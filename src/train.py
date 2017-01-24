@@ -12,13 +12,18 @@ import chainer
 from chainer import training
 from chainer.training import extensions
 
-from model import AlexNet
+import model
 
 # import hauth
 # from slacker import Slacker
 # import json
 
 DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../dataset")
+
+archs = {
+    'alex': model.AlexNet,
+    'alexlike': model.AlexLikeNet,
+}
 
 
 class PreprocessedDataset(chainer.dataset.DatasetMixin):
@@ -38,6 +43,9 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
         #     - Cropping (random or center rectangular)
         #     - Random flip
         #     - Scaling to [0, 1] value
+
+        # print('{}, {}'.format(self.base._root, self.base._pairs[i]))
+
         crop_size = self.crop_size
 
         image, label = self.base[i]
@@ -77,6 +85,8 @@ if __name__ == '__main__':
         description='Learning convnet from ILSVRC2012 dataset')
     parser.add_argument('train', help='Path to training image-label list file')
     # parser.add_argument('val', help='Path to validation image-label list file')
+    parser.add_argument('--arch', '-a', choices=archs.keys(), default='alex',
+                        help='Convnet architecture')
     parser.add_argument('--batchsize', '-B', type=int, default=32,
                         help='Learning minibatch size')
     parser.add_argument('--epoch', '-E', type=int, default=10,
@@ -101,7 +111,7 @@ if __name__ == '__main__':
     parser.set_defaults(test=False)
     args = parser.parse_args()
 
-    model = AlexNet()
+    model = archs[args.arch]()
     if args.initmodel:
         print('Load model from', args.initmodel)
         chainer.serializers.load_npz(args.initmodel, model)
