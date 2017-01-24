@@ -18,7 +18,7 @@ def compute_mean(dataset):
     for i, (image, _) in enumerate(dataset):
 
         sum_image += image
-        sys.stderr.write("{}/{}\r".format(i, N))
+        sys.stderr.write("{}/{}\r".format(i + 1, N))
         sys.stderr.flush()
 
     sys.stderr.write("\n")
@@ -33,6 +33,8 @@ if __name__ == '__main__':
                         help='Root directory path of image files')
     parser.add_argument('--output', '-o', default='mean.npy',
                         help='path to output mean array')
+    parser.add_argument('--image', '-i', action='store_true')
+    parser.set_defaults(image=False)
     args = parser.parse_args()
 
     with open(args.dataset, "rb") as rf:
@@ -40,4 +42,10 @@ if __name__ == '__main__':
 
     dataset = chainer.datasets.LabeledImageDataset(labeled_image_dataset_list, args.root)
     mean = compute_mean(dataset)
+
+    if args.image:
+        mean_image = np.ascontiguousarray(mean.transpose(1, 2, 0))
+        mean_image = Image.fromarray(mean_image, "RGB")
+        mean_image.save("mean_image.jpg", "JPEG")
+
     np.save(args.output, mean)
