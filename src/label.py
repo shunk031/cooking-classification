@@ -16,7 +16,7 @@ if __name__ == '__main__':
     train_labels = train_labeled_data["category_id"]
 
     train_labeled_image_dataset_list = [
-        (os.path.join(CROPPED_DIR, "cropped_" + filename), label) for filename, label in zip(train_filenames, train_labels)
+        ("cropped_" + filename, label) for filename, label in zip(train_filenames, train_labels)
     ]
 
     with open("train_labeled_image_dataset_list.pkl", "wb") as wf:
