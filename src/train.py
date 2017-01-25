@@ -10,6 +10,7 @@ import numpy as np
 
 import chainer
 from chainer import training
+from chainer import serializers
 from chainer.training import extensions
 
 import model
@@ -119,14 +120,17 @@ if __name__ == '__main__':
         chainer.cuda.get_device(args.gpu).use()  # Make the GPU current
         model.to_gpu()
 
+    print("[ PREPROCESS ] Load image-label list file.")
     with open(args.train, "rb") as rf:
         labeled_image_dataset_list = pickle.load(rf)
 
+    print("[ PREPEOCESS ] Split train and test tuple.")
     train_tuples, test_tuples = train_test_split(
         labeled_image_dataset_list, test_size=0.3, random_state=0
     )
 
     # Load the datasets and mean file
+    print("[ PREPROCESS ] Load the datasets and mean file.")
     mean = np.load(args.mean)
     train = PreprocessedDataset(train_tuples, args.root, mean, model.insize)
     val = PreprocessedDataset(test_tuples, args.root, mean, model.insize, False)
@@ -138,15 +142,17 @@ if __name__ == '__main__':
         val, args.val_batchsize, repeat=False, n_processes=args.loaderjob)
 
     # Set up an optimizer
+    print("[ PREPROCESS ] Set up an optimizer.")
     # optimizer = chainer.optimizers.Adam()
     optimizer = chainer.optimizers.MomentumSGD(lr=0.01, momentum=0.9)
     optimizer.setup(model)
 
     # Set up a trainer
+    print("[ PREPROCESS ] Set up a trainer.")
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
 
-    val_interval = (10 if args.test else 100000), 'iteration'
+    val_interval = (10 if args.test else 1000), 'iteration'
     log_interval = (10 if args.test else 1000), 'iteration'
 
     trainer.extend(TestModeEvaluator(val_iter, model, device=args.gpu),
@@ -170,3 +176,9 @@ if __name__ == '__main__':
         chainer.serializers.load_npz(args.resume, trainer)
 
     trainer.run()
+
+    # Save the trained model
+    serializers.save_npz(os.path.join(args.out, "model_final.npz"), model)
+    serializers.save_npz(os.path.join(args.out, "optimaizer_final.npz"), optimizer)
+
+    print("[ FINISH ] Training is Finished.")
