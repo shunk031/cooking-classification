@@ -44,8 +44,8 @@ if __name__ == '__main__':
     mean = compute_mean(dataset)
 
     if args.image:
-        mean_image = np.ascontiguousarray(mean.transpose(1, 2, 0))
-        mean_image = Image.fromarray(mean_image, "RGB")
+        mean_image = mean.transpose(1, 2, 0).astype(np.uint8)
+        mean_image = Image.fromarray(mean_image)
         mean_image.save("mean_image.jpg", "JPEG")
 
     np.save(args.output, mean)
