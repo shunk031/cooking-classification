@@ -24,6 +24,8 @@ DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../dat
 archs = {
     'alex': model.AlexNet,
     'alexlike': model.AlexLikeNet,
+    'deepalexlike': model.DeepAlexLikeNet,
+    'resnet': model.ResNet,
 }
 
 
@@ -144,7 +146,7 @@ if __name__ == '__main__':
     # Set up an optimizer
     print("[ PREPROCESS ] Set up an optimizer.")
     # optimizer = chainer.optimizers.Adam()
-    optimizer = chainer.optimizers.MomentumSGD(lr=0.01, momentum=0.9)
+    optimizer = chainer.optimizers.MomentumSGD(lr=0.005, momentum=0.9)
     optimizer.setup(model)
 
     # Set up a trainer
