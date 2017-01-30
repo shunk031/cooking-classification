@@ -4,7 +4,7 @@
 
 `dataset/clf_train_images_labeled_1/`と`dataset/clf_train_images_labeled_2/`にある学習データに対して、256x256サイズにクロッピングし、`/dataset/cropped_images/`に保存する。
 
-## `label.py`
+## `dump_image_list.py`
 
 `chainer.datasets.LabeledImageDataset`に与える(image filename, label)形式のリストを生成し、`train_labeled_image_dataset_list.pkl`として保存する。
 
