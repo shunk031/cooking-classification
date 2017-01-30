@@ -4,6 +4,7 @@
 *.pkl
 *.npy
 *.tsv
+.python-version
 
 __pycache__/
 src/result
