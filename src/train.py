@@ -170,7 +170,7 @@ if __name__ == '__main__':
     trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',
-        'main/accuracy', 'validation/main/accuracy', 'lr'
+        'main/accuracy', 'validation/main/accuracy', 'lr', 'elapsed_time'
     ]), trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
 
