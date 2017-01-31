@@ -9,6 +9,8 @@ from chainer import Variable
 
 class StackedCAE(chainer.Chain):
 
+    insize = 227
+
     def __init__(self):
         super(StackedCAE, self).__init__(
             conv1=L.Convolution2D(3,  96, 11, stride=4),
@@ -153,12 +155,10 @@ class StackedCAE(chainer.Chain):
         h = self.deconv19(h)
         h = self.bn19(h)
         h = F.relu(h)
-        h = F.local_response_normalization(h)
         h = F.unpooling_2d(h, 3, stride=2, outsize=self.pool2_inshape_[-2:])
 
         h = self.deconv20(h)
         h = F.relu(h)
-        h = F.local_response_normalization(h)
         h = F.unpooling_2d(h, 3, stride=2, outsize=self.pool1_inshape_[-2:])
 
         y = h
