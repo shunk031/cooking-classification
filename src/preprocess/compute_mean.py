@@ -27,12 +27,9 @@ def compute_mean(dataset):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Compute images mean array')
-    parser.add_argument('dataset',
-                        help='Path to training image-label list file')
-    parser.add_argument('--root', '-R', default='.',
-                        help='Root directory path of image files')
-    parser.add_argument('--output', '-o', default='mean.npy',
-                        help='path to output mean array')
+    parser.add_argument('dataset', help='Path to training image-label list file')
+    parser.add_argument('--root', '-R', default='.', help='Root directory path of image files')
+    parser.add_argument('--output', '-o', default='mean.npy', help='path to output mean array')
     parser.add_argument('--image', '-i', action='store_true')
     parser.set_defaults(image=False)
     args = parser.parse_args()
