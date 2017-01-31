@@ -25,7 +25,8 @@ if __name__ == '__main__':
         CROPPED_IMAGE_DIR = os.path.join(CROPPED_DIR, 'train_cae')
 
         # get all unlabeled image filenames
-        image_dataset_list = os.listdir(CROPPED_IMAGE_DIR)
+        unlabeled_image_dataset_list = os.listdir(CROPPED_IMAGE_DIR)
+        image_dataset_list = [(filename, 0) for filename in unlabeled_image_dataset_list]
         dump_pkl_filename = "cae_image_dataset_list.pkl"
 
     else:
