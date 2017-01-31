@@ -15,10 +15,12 @@ def compute_mean(dataset):
     N = len(dataset)
 
     for i, (image, _) in enumerate(dataset):
-
-        sum_image += image
-        sys.stderr.write("{}/{}\r".format(i + 1, N))
-        sys.stderr.flush()
+        try:
+            sum_image += image
+            sys.stderr.write("{}/{}\r".format(i + 1, N))
+            sys.stderr.flush()
+        except ValueError as err:
+            print(err)
 
     sys.stderr.write("\n")
     return sum_image / N
