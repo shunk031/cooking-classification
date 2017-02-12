@@ -4,6 +4,7 @@
 *.pkl
 *.npy
 *.tsv
+*.zip
 .python-version
 
 __pycache__/
