@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
     else:
         # get all tuples of filename and category id
-        angles = [angle for angle in range(0, 360, 36)]
-        ignore_angles = [0, ]
+        angles = [angle for angle in range(0, 360, 10)]
+        ignore_angles = [0, 90, 180, 270]
 
         image_dataset_list = []
         for key, column in train_labeled_data.iterrows():
@@ -42,11 +42,12 @@ if __name__ == '__main__':
             for angle in angles:
                 if angle in ignore_angles:
                     img_path = os.path.join("cropped_images", str(category_id), root, "cropped_" + filename)
+                    image_dataset_list.append((img_path, category_id))
                 else:
-                    img_path = os.path.join("cropped_images", str(category_id), root, "cropped_{}_rotate_{}{}".format(root, angle, ext))
-
-                train_tuple = (img_path, category_id)
-                image_dataset_list.append(train_tuple)
+                    rotate_img_path = os.path.join("cropped_images", str(category_id), root, "cropped_{}_rotate_{}{}".format(root, angle, ext))
+                    flip_img_path = os.path.join("cropped_images", str(category_id), root, "cropped_{}_flip_rotate_{}{}".format(root, angle, ext))
+                    image_dataset_list.append((rotate_img_path, category_id))
+                    image_dataset_list.append((flip_img_path, category_id))
 
         dump_pkl_filename = "labeled_image_dataset_list.pkl"
 

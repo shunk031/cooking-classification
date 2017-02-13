@@ -44,10 +44,7 @@ def quadrate_image(img):
     return quadrate_img
 
 
-def rotate_multiple_angle(arg_tuple):
-
-    img_path, category_id, root, ext = arg_tuple
-    print("[ PROCESS ] Now processing: {}".format(root))
+def rotate_image(angle, img_path, category_id, root, ext):
 
     img = Image.open(img_path, "r")
 
@@ -55,22 +52,39 @@ def rotate_multiple_angle(arg_tuple):
     start_margin = (resize_size - 256) / 2
     end_margin = 256 + start_margin
 
-    angles = [angle for angle in range(0, 360, 36)]
-    ignore_angles = [0, 90, 180]
+    ignore_angles = [0, 90, 180, 270]
+
+    if not(angle in ignore_angles):
+        rotate_img = img.rotate(angle, expand=True)
+        quadrate_img = quadrate_image(rotate_img)
+        resize_img = quadrate_img.resize((resize_size, resize_size), Image.ANTIALIAS)
+        crop_img = resize_img.crop((start_margin, start_margin, end_margin, end_margin))
+
+    else:
+        quadrate_img = quadrate_image(img)
+        crop_img = quadrate_img.resize((256, 256), Image.ANTIALIAS)
+
+    return crop_img
+
+
+def save_argument_images(args_tuple):
+
+    img_path, category_id, root, ext = args_tuple
+
+    print("[ PROCESS ] Now processing: {}".format(root))
+
+    angles = [angle for angle in range(0, 360, 10)]
+    ignore_angles = [0, 90, 180, 270]
+
     for angle in angles:
-        if not angle in ignore_angles:
-            rotate_img = img.rotate(angle, expand=True)
-            quadrate_img = quadrate_image(rotate_img)
-            resize_img = quadrate_img.resize((resize_size, resize_size), Image.ANTIALIAS)
-            crop_img = resize_img.crop((start_margin, start_margin, end_margin, end_margin))
-            img_filename = "cropped_{}_rotate_{}{}".format(root, angle, ext)
+        rotate_img = rotate_image(angle, img_path, category_id, root, ext)
+        rotate_img_filename = "cropped_{}_rotate_{}{}".format(root, angle, ext)
+        rotate_img.save(os.path.join(TRAIN_MODEL_DIR, str(category_id), root, rotate_img_filename), "JPEG")
 
-        else:
-            quadrate_img = quadrate_image(img)
-            crop_img = quadrate_img.resize((256, 256), Image.ANTIALIAS)
-            img_filename = "cropped_{}{}".format(root, ext)
-
-        crop_img.save(os.path.join(TRAIN_MODEL_DIR, str(category_id), root, img_filename), "JPEG")
+        if not(angle in ignore_angles):
+            flip_rotate_img = rotate_img.transpose(Image.FLIP_LEFT_RIGHT)
+            flip_img_filename = "cropped_{}_flip_rotate_{}{}".format(root, angle, ext)
+            flip_rotate_img.save(os.path.join(TRAIN_MODEL_DIR, str(category_id), root, flip_img_filename), "JPEG")
 
 
 def make_category_dir(category_id_list):
@@ -114,7 +128,7 @@ if __name__ == '__main__':
         # make augment directory
         make_augment_dir(df)
 
-    arg_list = []
+    args_list = []
     for i, (key, column) in enumerate(df.iterrows()):
         filename, category_id = column.values
         # filename = row_data[0]
@@ -125,7 +139,8 @@ if __name__ == '__main__':
         else:
             labeled_image_dir = os.path.join(IMAGE_DIR_PATH, "clf_train_images_labeled_2")
 
-        arg_list.append((os.path.join(labeled_image_dir, filename), category_id, root, ext))
+        args_list.append((os.path.join(labeled_image_dir, filename), category_id, root, ext))
 
+    # save argument images using multiprocessing
     p = Pool(args.loaderjob)
-    p.map(rotate_multiple_angle, arg_list)
+    p.map(save_argument_images, args_list)
