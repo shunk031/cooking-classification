@@ -31,7 +31,7 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
     def get_example(self, i):
 
         crop_size = self.crop_size
-        image, _ = self.base[i]
+        image = self.base[i]
         _, h, w = image.shape
 
         if self.random:
@@ -75,11 +75,13 @@ if __name__ == '__main__':
     parser.add_argument('--out', '-o', default='result', help='Out directory')
     parser.add_argument('--root', '-R', default='.', help='Root directory path of image files')
     parser.add_argument('--val_batchsize', '-b', type=int, default=250, help='Validation minibatch size')
+    parser.add_argument('--test', action='store_true')
+    parser.set_defaults(test=False)
     args = parser.parse_args()
 
     model = StackedCAE()
     if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).user()  # Make the GPU current
+        chainer.cuda.get_device(args.gpu).use()  # Make the GPU current
         model.to_gpu()
 
     print("[ PREPROCESS ] Load image-path list file.")
@@ -89,8 +91,9 @@ if __name__ == '__main__':
 
     print("[ PREPROCESS ] Split train and test image.")
     train_images, test_images = train_test_split(
-        unlabeled_image_dataset_list.test_size=0.3, random_state=0
+        unlabeled_image_dataset_list, test_size=0.1, random_state=0
     )
+    print("{:15}all: {}, train: {}, test: {}".format("", len(unlabeled_image_dataset_list), len(train_images), len(test_images)))
 
     # Load the datasets and mean file
     print("[ PREPROCESS ] Load the datasets and mean file.")

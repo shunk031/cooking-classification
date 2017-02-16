@@ -15,10 +15,6 @@ from chainer.training import extensions
 
 import model
 
-# import hauth
-# from slacker import Slacker
-# import json
-
 DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../dataset")
 
 archs = {
@@ -128,8 +124,9 @@ if __name__ == '__main__':
 
     print("[ PREPEOCESS ] Split train and test tuple.")
     train_tuples, test_tuples = train_test_split(
-        labeled_image_dataset_list, test_size=0.3, random_state=0
+        labeled_image_dataset_list, test_size=0.1, random_state=0
     )
+    print("{:15}all: {}, train: {}, test: {}".format("", len(labeled_image_dataset_list), len(train_tuples), len(test_tuples)))
 
     # Load the datasets and mean file
     print("[ PREPROCESS ] Load the datasets and mean file.")
@@ -167,6 +164,8 @@ if __name__ == '__main__':
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
+    trainer.extend(extensions.PlotReport(['main/loss', 'validation/main/loss'], 'epoch', file_name='loss.png', trigger=log_interval))
+    trainer.extend(extensions.PlotReport(['main/accuracy', 'validation/main/accuracy'], 'epoch', file_name='accuracy.png', trigger=log_interval))
     trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',

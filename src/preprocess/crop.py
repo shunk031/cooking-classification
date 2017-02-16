@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import pickle
+import numpy as np
 
 from PIL import Image
 
@@ -21,6 +22,11 @@ def crop_image(img_path):
     """
 
     img = Image.open(img_path, "r")
+    img_array = np.array(img)
+
+    if img_array.shape[-1] > 3:
+        raise ValueError("This image contains alpha channel: {}".format(img_path))
+
     square_size = min(img.size)
     width, height = img.size
 
@@ -81,13 +87,16 @@ if __name__ == '__main__':
     num_of_images = len(image_path_list)
     for i, img_path in enumerate(image_path_list):
 
-        # crop image
-        crop_img = crop_image(img_path[0])
-        # save cropped image
-        cropped_image_path = os.path.join(CROPPED_IMAGE_DIR, "cropped_" + img_path[1])
-        crop_img.save(cropped_image_path, "JPEG")
+        try:
+            # crop image
+            crop_img = crop_image(img_path[0])
+            # save cropped image
+            cropped_image_path = os.path.join(CROPPED_IMAGE_DIR, "cropped_" + img_path[1])
+            crop_img.save(cropped_image_path, "JPEG")
 
-        sys.stderr.write("{}/{} Now process: {}\r".format(i + 1, num_of_images, img_path[1]))
-        sys.stderr.flush()
+            sys.stderr.write("{}/{} Now process: {}\r".format(i + 1, num_of_images, img_path[1]))
+            sys.stderr.flush()
+        except ValueError:
+            pass
 
     sys.stderr.write("\n")

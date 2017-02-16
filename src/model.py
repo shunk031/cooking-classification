@@ -97,10 +97,13 @@ class DeepAlexLikeNet(chainer.Chain):
             bn2=L.BatchNormalization(256),
 
             conv3=L.Convolution2D(256, 384,  3, pad=1),
+            bn3=L.BatchNormalization(384),
 
             conv4=L.Convolution2D(384, 384,  3, pad=1),
+            bn4=L.BatchNormalization(384),
 
             conv5=L.Convolution2D(384, 384,  3, pad=1),
+            bn5=L.BatchNormalization(384),
 
             conv6=L.Convolution2D(384, 384,  3, pad=1),
             bn6=L.BatchNormalization(384),
@@ -119,13 +122,13 @@ class DeepAlexLikeNet(chainer.Chain):
             F.relu(self.conv1(x))), 3, stride=2)
         h = F.max_pooling_2d(F.local_response_normalization(
             F.relu(self.bn2(self.conv2(h)))), 3, stride=2)
-        h = F.relu(self.conv3(h))
-        h = F.relu(self.conv4(h))
-        h = F.relu(self.conv5(h))
+        h = F.relu(self.bn3(self.conv3(h)))
+        h = F.relu(self.bn4(self.conv4(h)))
+        h = F.relu(self.bn5(self.conv5(h)))
         h = F.relu(self.bn6(self.conv6(h)))
         h = F.max_pooling_2d(F.relu(self.bn7(self.conv7(h))), 3, stride=2)
-        h = F.relu(self.fc8(h))
-        h = F.relu(self.fc9(h))
+        h = F.dropout(F.relu(self.fc8(h)), train=self.train)
+        h = F.dropout(F.relu(self.fc9(h)), train=self.train)
         h = self.fc10(h)
 
         loss = F.softmax_cross_entropy(h, t)
