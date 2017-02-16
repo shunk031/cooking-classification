@@ -108,7 +108,7 @@ if __name__ == '__main__':
                         help='Output directory')
     parser.add_argument('--root', '-R', default='.',
                         help='Root directory path of image files')
-    parser.add_argument('--val_batchsize', '-b', type=int, default=250,
+    parser.add_argument('--val_batchsize', '-b', type=int, default=64,
                         help='Validation minibatch size')
     parser.add_argument('--test', action='store_true')
     parser.set_defaults(test=False)
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     model = archs[args.arch]()
     if args.initmodel:
-        print('Load model from', args.initmodel)
+        print('[ PREPROCESS ] Load model from', args.initmodel)
         chainer.serializers.load_npz(args.initmodel, model)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make the GPU current
@@ -154,8 +154,8 @@ if __name__ == '__main__':
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
 
-    val_interval = (10 if args.test else 1000), 'iteration'
-    log_interval = (10 if args.test else 1000), 'iteration'
+    val_interval = (1000 if args.test else 100000), 'iteration'
+    log_interval = (1000 if args.test else 1000), 'iteration'
 
     trainer.extend(TestModeEvaluator(val_iter, model, device=args.gpu),
                    trigger=val_interval)
