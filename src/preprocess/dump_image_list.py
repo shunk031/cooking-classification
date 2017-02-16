@@ -41,11 +41,12 @@ if __name__ == '__main__':
             root, ext = os.path.splitext(filename)
             for angle in angles:
                 if angle in ignore_angles:
-                    img_path = os.path.join("cropped_images", str(category_id), root, "cropped_" + filename)
-                    image_dataset_list.append((img_path, category_id))
+                    # img_path = os.path.join("train_model", str(category_id), root, "cropped_" + filename)
+                    # image_dataset_list.append((img_path, category_id))
+                    pass
                 else:
-                    rotate_img_path = os.path.join("cropped_images", str(category_id), root, "cropped_{}_rotate_{}{}".format(root, angle, ext))
-                    flip_img_path = os.path.join("cropped_images", str(category_id), root, "cropped_{}_flip_rotate_{}{}".format(root, angle, ext))
+                    rotate_img_path = os.path.join("train_model", str(category_id), root, "cropped_{}_rotate_{}{}".format(root, angle, ext))
+                    flip_img_path = os.path.join("train_model", str(category_id), root, "cropped_{}_flip_rotate_{}{}".format(root, angle, ext))
                     image_dataset_list.append((rotate_img_path, category_id))
                     image_dataset_list.append((flip_img_path, category_id))
 
