@@ -151,7 +151,7 @@ if __name__ == '__main__':
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
 
-    val_interval = (1000 if args.test else 100000), 'iteration'
+    val_interval = (1000 if args.test else 10000), 'iteration'
     log_interval = (1000 if args.test else 1000), 'iteration'
 
     trainer.extend(TestModeEvaluator(val_iter, model, device=args.gpu),
@@ -159,13 +159,13 @@ if __name__ == '__main__':
     trainer.extend(extensions.dump_graph('main/loss'))
     trainer.extend(extensions.snapshot(), trigger=val_interval)
     trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=val_interval)
+        model, args.arch + '_model_iter_{.updater.iteration}'), trigger=val_interval)
 
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
-    trainer.extend(extensions.PlotReport(['main/loss', 'validation/main/loss'], 'epoch', file_name='loss.png', trigger=log_interval))
-    trainer.extend(extensions.PlotReport(['main/accuracy', 'validation/main/accuracy'], 'epoch', file_name='accuracy.png', trigger=log_interval))
+    trainer.extend(extensions.PlotReport(['main/loss', 'validation/main/loss'], 'epoch', file_name='{}_loss.png'.format(args.arch), trigger=log_interval))
+    trainer.extend(extensions.PlotReport(['main/accuracy', 'validation/main/accuracy'], 'epoch', file_name='{}_accuracy.png'.format(args.arch), trigger=log_interval))
     trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     trainer.run()
 
     # Save the trained model
-    serializers.save_npz(os.path.join(args.out, "model_final.npz"), model)
-    serializers.save_npz(os.path.join(args.out, "optimaizer_final.npz"), optimizer)
+    serializers.save_npz(os.path.join(args.out, "{}_model_final.npz".format(args.arch)), model)
+    serializers.save_npz(os.path.join(args.out, "{}_optimaizer_final.npz".format(args.arch)), optimizer)
 
     print("[ FINISH ] Training is Finished.")
