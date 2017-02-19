@@ -14,6 +14,7 @@ class StackedCAE(chainer.Chain):
     def __init__(self):
         super(StackedCAE, self).__init__(
             conv1=L.Convolution2D(3,  96, 11, stride=4),
+            bn1=L.BatchNormalization(96),
 
             conv2=L.Convolution2D(96, 256,  5, pad=2),
             bn2=L.BatchNormalization(256),
@@ -82,6 +83,7 @@ class StackedCAE(chainer.Chain):
     def encode(self, x):
 
         h = self.conv1(x)
+        h = self.bn1(h)
         h = F.relu(h)
         h = F.local_response_normalization(h)
         self.pool1_inshape_ = h.data.shape
