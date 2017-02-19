@@ -87,7 +87,6 @@ if __name__ == '__main__':
     print("[ PREPROCESS ] Load image-path list file.")
     with open(args.train, "rb") as rf:
         unlabeled_image_dataset_list = pickle.load(rf)
-    unlabeled_image_dataset_list = [dataset_tuple[0] for dataset_tuple in unlabeled_image_dataset_list]
 
     print("[ PREPROCESS ] Split train and test image.")
     train_images, test_images = train_test_split(
