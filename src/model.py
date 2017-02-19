@@ -92,6 +92,7 @@ class DeepAlexLikeNet(chainer.Chain):
     def __init__(self):
         super(DeepAlexLikeNet, self).__init__(
             conv1=L.Convolution2D(3,  96, 11, stride=4),
+            bn1=L.BatchNormalization(96),
 
             conv2=L.Convolution2D(96, 256,  5, pad=2),
             bn2=L.BatchNormalization(256),
@@ -134,6 +135,24 @@ class DeepAlexLikeNet(chainer.Chain):
         loss = F.softmax_cross_entropy(h, t)
         chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss
+
+    def predict(self, x):
+
+        h = F.max_pooling_2d(F.local_response_normalization(
+            F.relu(self.conv1(x))), 3, stride=2)
+        h = F.max_pooling_2d(F.local_response_normalization(
+            F.relu(self.bn2(self.conv2(h)))), 3, stride=2)
+        h = F.relu(self.bn3(self.conv3(h)))
+        h = F.relu(self.bn4(self.conv4(h)))
+        h = F.relu(self.bn5(self.conv5(h)))
+        h = F.relu(self.bn6(self.conv6(h)))
+        h = F.max_pooling_2d(F.relu(self.bn7(self.conv7(h))), 3, stride=2)
+        h = F.dropout(F.relu(self.fc8(h)), train=self.train)
+        h = F.dropout(F.relu(self.fc9(h)), train=self.train)
+        h = self.fc10(h)
+
+        pred = F.softmax(h)
+        return pred
 
 
 class BottleNeckA(chainer.Chain):
