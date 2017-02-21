@@ -14,15 +14,9 @@ from chainer import serializers
 from chainer.training import extensions
 
 import model
+from model import archs
 
 DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../dataset")
-
-archs = {
-    'alex': model.AlexNet,
-    'alexlike': model.AlexLikeNet,
-    'deepalexlike': model.DeepAlexLikeNet,
-    'resnet': model.ResNet,
-}
 
 
 class PreprocessedDataset(chainer.dataset.DatasetMixin):
@@ -83,7 +77,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Learning convnet from ILSVRC2012 dataset')
     parser.add_argument('train', help='Path to training image-label list file')
-    # parser.add_argument('val', help='Path to validation image-label list file')
+    parser.add_argument('val', help='Path to validation image-label list file')
     parser.add_argument('--arch', '-a', choices=archs.keys(), default='alex',
                         help='Convnet architecture')
     parser.add_argument('--batchsize', '-B', type=int, default=32,
@@ -120,19 +114,18 @@ if __name__ == '__main__':
 
     print("[ PREPROCESS ] Load image-label list file.")
     with open(args.train, "rb") as rf:
-        labeled_image_dataset_list = pickle.load(rf)
+        train_tuples = pickle.load(rf)
+    with open(args.val, "rb") as rf:
+        val_tuples = pickle.load(rf)
 
-    print("[ PREPEOCESS ] Split train and test tuple.")
-    train_tuples, test_tuples = train_test_split(
-        labeled_image_dataset_list, test_size=0.1, random_state=0
-    )
-    print("{:15}all: {}, train: {}, test: {}".format("", len(labeled_image_dataset_list), len(train_tuples), len(test_tuples)))
+    num_of_image_data = len(train_tuples) + len(val_tuples)
+    print("{:15}All: {}, Train: {}, Val: {}".format("", num_of_image_data, len(train_tuples), len(val_tuples)))
 
     # Load the datasets and mean file
     print("[ PREPROCESS ] Load the datasets and mean file.")
     mean = np.load(args.mean)
     train = PreprocessedDataset(train_tuples, args.root, mean, model.insize)
-    val = PreprocessedDataset(test_tuples, args.root, mean, model.insize, False)
+    val = PreprocessedDataset(val_tuples, args.root, mean, model.insize, False)
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
     train_iter = chainer.iterators.MultiprocessIterator(
@@ -142,8 +135,10 @@ if __name__ == '__main__':
 
     # Set up an optimizer
     print("[ PREPROCESS ] Set up an optimizer.")
-    # optimizer = chainer.optimizers.Adam()
-    optimizer = chainer.optimizers.MomentumSGD(lr=0.005, momentum=0.9)
+    if args.arch == "resnet":
+        optimizer = chainer.optimizers.Adam()
+    else:
+        optimizer = chainer.optimizers.MomentumSGD(lr=0.005, momentum=0.9)
     optimizer.setup(model)
 
     # Set up a trainer
