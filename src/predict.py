@@ -75,7 +75,7 @@ if __name__ == '__main__':
     parser.add_argument('trained_model', help='Path to traied model')
     parser.add_argument('--arch', '-a', choices=archs.keys(), default='alex')
     parser.add_argument('--root', '-R', default='.')
-    # parser.add_argument('--gpu', '-g', type=int, default=-1)
+    parser.add_argument('--gpu', '-g', type=int, default=-1)
     parser.add_argument('--mean', '-m', default='train_mean.npy', help='Mean file (computed by compute_mean.py)')
     args = parser.parse_args()
 
@@ -83,9 +83,16 @@ if __name__ == '__main__':
     print('[ PREPROCESS ] Load model from {}'.format(args.trained_model))
     chainer.serializers.load_npz(args.trained_model, model)
 
+    if args.gpu >= 0:
+        chainer.cuda.get_device(args.gpu).use()
+        model.to_gpu()
+
     print("[ PREPROCESS ] Load image-path list file.")
     with open(args.test, "rb") as rf:
         test_image_dataset_list = pickle.load(rf)
+
+    if isinstance(test_image_dataset_list[0], tuple):
+        test_image_dataset_list = [file[0] for file in test_image_dataset_list]
 
     print("[ PREPROCESS ] Load the datasets and mean file.")
     mean = np.load(args.mean)
@@ -97,7 +104,18 @@ if __name__ == '__main__':
     for i in range(len(test_datasets)):
         test_data = test_datasets[i]
 
-        pred = model.predict(np.array([test_datasets[i]])).data
+        if args.gpu >= 0:
+            img = chainer.cuda.cupy.asarray([test_data], dtype=np.float32)
+        else:
+            img = np.array([test_data])
+
+        pred = model.predict(img).data
+
+        if args.gpu >= 0:
+            pred = chainer.cuda.to_cpu(pred)
+        else:
+            pred = pred.data
+
         pred_idx = np.argsort(pred)[0][::-1][0]
         print("test no. {:5}: predict: {}".format(i, pred_idx))
         pred_results.append([i, pred_idx])
