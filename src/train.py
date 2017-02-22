@@ -124,8 +124,8 @@ if __name__ == '__main__':
     # Load the datasets and mean file
     print("[ PREPROCESS ] Load the datasets and mean file.")
     mean = np.load(args.mean)
-    train = PreprocessedDataset(train_tuples, args.root, mean, model.insize)
-    val = PreprocessedDataset(val_tuples, args.root, mean, model.insize, False)
+    train = PreprocessedDataset(train_tuples, args.root, mean, 227)
+    val = PreprocessedDataset(val_tuples, args.root, mean, 227, False)
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
     train_iter = chainer.iterators.MultiprocessIterator(
