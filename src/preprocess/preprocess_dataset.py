@@ -15,6 +15,14 @@ CROPPED_ROOT_DIR = os.path.join(DATASET_DIR, "cropped_images")
 
 PREPROCESS_TYPES = ["train", "cae", "test"]
 
+ROTATE_TYPE_DICT = {
+    "LEFT_RIGHT": Image.FLIP_LEFT_RIGHT,
+    "FLIP_TOP_BOTTOM": Image.FLIP_TOP_BOTTOM,
+    "ROTATE_90": Image.ROTATE_90,
+    "ROTATE_180": Image.ROTATE_180,
+    "ROTATE_270": Image.ROTATE_270
+}
+
 
 def make_category_dir(category_id_list, root_dir):
 
@@ -59,11 +67,38 @@ def crop_and_save(image_info_tuple):
         print("[ EXCEPTION ] Exception occured: {}".format(err))
 
 
+def rotate_and_save(image_info_tuple):
+
+    save_dir, image_full_path, image_name = image_info_tuple
+    try:
+        # load image as PIL object
+        img = Image.open(image_full_path, "r")
+        img_array = np.array(img)
+
+        # raise exception if image contains alpha channel
+        if img_array.shape[-1] > 3:
+            raise ValueError("This image contains alpha channel: {}".format(image_full_path))
+
+        # quadrate and crop image
+        crop_img = quadrate_image(img).resize((256, 256), Image.ANTIALIAS)
+
+        # flip image
+        for k, v in ROTATE_TYPE_DICT.items():
+            print("[ PREPROCESS ] Now processing: {}_{}".format(k, image_name))
+            rotate_img = crop_img.transpose(v)
+            rotate_image_path = os.path.join(save_dir, "cropped_{}_{}".format(k, image_name))
+            rotate_img.save(rotate_image_path, "JPEG")
+
+    except ValueError as err:
+        print("[ EXCEPTION ] Exception occured: {}".format(err))
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("preprocess_type", choices=PREPROCESS_TYPES)
     parser.add_argument("--loaderjob", type=int, default=1)
+    parser.add_argument("--rotate", action="store_true")
+    parser.set_defaults(rotate=False)
     args = parser.parse_args()
 
     # use Pool of multiprocessing module
@@ -84,11 +119,13 @@ if __name__ == '__main__':
         train_data, val_data = train_test_split(train_df, test_size=0.1, random_state=0)
 
         # make category and augment directory
-        make_category_dir(category_id_list, CROPPED_TRAIN_IMAGE_DIR)
-        make_category_dir(category_id_list, CROPPED_VAL_IMAGE_DIR)
+        if not os.path.isdir(CROPPED_TRAIN_IMAGE_DIR):
+            make_category_dir(category_id_list, CROPPED_TRAIN_IMAGE_DIR)
+            make_augment_dir(train_data, CROPPED_TRAIN_IMAGE_DIR)
 
-        make_augment_dir(train_data, CROPPED_TRAIN_IMAGE_DIR)
-        make_augment_dir(val_data, CROPPED_VAL_IMAGE_DIR)
+        if not os.path.isdir(CROPPED_VAL_IMAGE_DIR):
+            make_category_dir(category_id_list, CROPPED_VAL_IMAGE_DIR)
+            make_augment_dir(val_data, CROPPED_VAL_IMAGE_DIR)
 
     elif args.preprocess_type == "cae":
         # set cropped image dir
@@ -106,6 +143,23 @@ if __name__ == '__main__':
         image_dir_path = os.path.join(DATASET_DIR, "labeled")
 
         # preprocess for train data
+        image_info_tuple_list = []
+        for key, column in train_data.iterrows():
+            filename, category_id = column.values
+            root, ext = os.path.splitext(filename)
+
+            augment_dir = os.path.join(CROPPED_TRAIN_IMAGE_DIR, str(category_id), root)
+            if os.path.isfile(os.path.join(image_dir_path, "clf_train_images_labeled_1", filename)):
+                image_info_tuple_list.append((augment_dir, os.path.join(image_dir_path, "clf_train_images_labeled_1", filename), filename))
+            else:
+                image_info_tuple_list.append((augment_dir, os.path.join(image_dir_path, "clf_train_images_labeled_2", filename), filename))
+
+        # crop images in multi process
+        p.map(crop_and_save, image_info_tuple_list)
+
+        if args.rotate:
+            # rotate images in multi process
+            p.map(rotate_and_save, image_info_tuple_list)
 
         # preprocess for validation data
         image_info_tuple_list = []
@@ -114,7 +168,6 @@ if __name__ == '__main__':
             root, ext = os.path.splitext(filename)
 
             augment_dir = os.path.join(CROPPED_VAL_IMAGE_DIR, str(category_id), root)
-
             if os.path.isfile(os.path.join(image_dir_path, "clf_train_images_labeled_1", filename)):
                 image_info_tuple_list.append((augment_dir, os.path.join(image_dir_path, "clf_train_images_labeled_1", filename), filename))
             else:

@@ -5,55 +5,73 @@ import argparse
 import pandas as pd
 import pickle
 
-DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../../dataset")
-CROPPED_DIR = os.path.join(DATASET_DIR, "cropped_images")
+from sklearn.model_selection import train_test_split
+from preprocess_dataset import PREPROCESS_TYPES
+from preprocess_dataset import DATASET_DIR
+from preprocess_dataset import CROPPED_ROOT_DIR
+from preprocess_dataset import ROTATE_TYPE_DICT
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='dump labeled image dataset list')
-    parser.add_argument('--cae', action='store_true')
-    parser.set_defaults(cae=False)
+    parser.add_argument('preprocess_type', choices=PREPROCESS_TYPES)
+    parser.add_argument('--rotate', action="store_true")
+    parser.set_defaults(rotate=False)
     args = parser.parse_args()
 
     # load train file contain image filename and category id
-    train_labeled_data = pd.read_csv(os.path.join(DATASET_DIR, "clf_train_master.tsv"), delimiter="\t")
+    if args.preprocess_type == "train" or args.preprocess_type == "cae":
+        train_df = pd.read_csv(os.path.join(DATASET_DIR, "clf_train_master.tsv"), delimiter="\t")
 
-    train_filenames = train_labeled_data["file_name"]
-    train_labels = train_labeled_data["category_id"]
+    else:
+        test_df = pd.read_csv(os.path.join(DATASET_DIR, "clf_test.tsv"), delimiter='\t')
 
-    if args.cae:
-        CROPPED_IMAGE_DIR = os.path.join(CROPPED_DIR, 'train_cae')
+    image_dataset_list = []
+    if args.preprocess_type == "train":
+
+        train_data, val_data = train_test_split(train_df, test_size=0.1, random_state=0)
+
+        for key, column in train_data.iterrows():
+            filename, category_id = column.values
+            root, ext = os.path.splitext(filename)
+            image_dataset_list.append((os.path.join("train_model", "train", str(category_id), root, "cropped_{}".format(filename)), category_id))
+        dump_pickle_name = "train_labeled_image_dataset_list.pkl"
+
+        if args.rotate:
+            for key, colum in train_data.iterrows():
+                filename, category_id = column.values
+                root, ext = os.path.splitext(filename)
+                for rotate_type in ROTATE_TYPE_DICT.keys():
+                    image_dataset_list.append((os.path.join("train_model", "train", str(category_id), root, "cropped_{}_{}".format(rotate_type, filename)), category_id))
+            dump_pickle_name = "train_labeled_image_augment_dataset_list.pkl"
+
+        with open(dump_pickle_name, "wb") as wf:
+            pickle.dump(image_dataset_list, wf)
+
+        image_dataset_list = []
+        for key, column in val_data.iterrows():
+            filename, category_id = column.values
+            root, ext = os.path.splitext(filename)
+            image_dataset_list.append((os.path.join("train_model", "val", str(category_id), root, "cropped_{}".format(filename)), category_id))
+        dump_pickle_name = "val_labeled_image_dataset_list.pkl"
+
+    elif args.preprocess_type == "cae":
+        CROPPED_IMAGE_DIR = os.path.join(CROPPED_ROOT_DIR, 'train_cae')
 
         # get all unlabeled image filenames
         unlabeled_image_dataset_list = os.listdir(CROPPED_IMAGE_DIR)
-        image_dataset_list = [(filename, 0) for filename in unlabeled_image_dataset_list]
-        dump_pkl_filename = "cae_image_dataset_list.pkl"
+        image_dataset_list = [os.path.join("train_cae", filename) for filename in unlabeled_image_dataset_list]
+        dump_pickle_name = "cae_image_dataset_list.pkl"
 
-    else:
-        # get all tuples of filename and category id
-        angles = [angle for angle in range(0, 360, 10)]
-        ignore_angles = [0, 90, 180, 270]
+    elif args.preprocess_type == "test":
 
-        image_dataset_list = []
-        for key, column in train_labeled_data.iterrows():
-            filename, category_id = column.values
+        CROPPED_IMAGE_DIR = os.path.join(CROPPED_ROOT_DIR, "test_model")
+        image_dataset_list = [os.path.join("test_model", filename) for filename in os.listdir(CROPPED_IMAGE_DIR)]
 
-            root, ext = os.path.splitext(filename)
-            for angle in angles:
-                if angle in ignore_angles:
-                    # img_path = os.path.join("train_model", str(category_id), root, "cropped_" + filename)
-                    # image_dataset_list.append((img_path, category_id))
-                    pass
-                else:
-                    rotate_img_path = os.path.join("train_model", str(category_id), root, "cropped_{}_rotate_{}{}".format(root, angle, ext))
-                    flip_img_path = os.path.join("train_model", str(category_id), root, "cropped_{}_flip_rotate_{}{}".format(root, angle, ext))
-                    image_dataset_list.append((rotate_img_path, category_id))
-                    image_dataset_list.append((flip_img_path, category_id))
-
-        dump_pkl_filename = "labeled_image_dataset_list.pkl"
+        dump_pickle_name = "test_image_dataset_list.pkl"
 
     # dump image dataset list as pikle file
-    with open(dump_pkl_filename, "wb") as wf:
+    with open(dump_pickle_name, "wb") as wf:
         pickle.dump(image_dataset_list, wf)
 
     print("Dump image dataset list.")
