@@ -65,8 +65,10 @@ if __name__ == '__main__':
 
     elif args.preprocess_type == "test":
 
-        CROPPED_IMAGE_DIR = os.path.join(CROPPED_ROOT_DIR, "test_model")
-        image_dataset_list = [os.path.join("test_model", filename) for filename in os.listdir(CROPPED_IMAGE_DIR)]
+        image_dataset_list = []
+        for key, column in test_df.iterrows():
+            idx, filename = column.values
+            image_dataset_list.append(os.path.join("test_model", "cropped_{}".format(filename)))
 
         dump_pickle_name = "test_image_dataset_list.pkl"
 
