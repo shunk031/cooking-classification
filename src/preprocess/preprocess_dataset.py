@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import pickle
 import numpy as np
 import pandas as pd
 
@@ -10,11 +11,17 @@ from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
 from image_augment import quadrate_image
 
+# for dataset directory
 DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../../dataset")
+# for cropped_images directory
 CROPPED_ROOT_DIR = os.path.join(DATASET_DIR, "cropped_images")
+# for semi_supervised directory
+SEMI_SUPERVISED_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "..", "semi_supervised")
 
-PREPROCESS_TYPES = ["train", "cae", "test"]
+# preprocess types
+PREPROCESS_TYPES = ["train", "cae", "test", "semi-supervised"]
 
+# rotate types
 ROTATE_TYPE_DICT = {
     "LEFT_RIGHT": Image.FLIP_LEFT_RIGHT,
     "FLIP_TOP_BOTTOM": Image.FLIP_TOP_BOTTOM,
@@ -34,14 +41,27 @@ def make_category_dir(category_id_list, root_dir):
 
 def make_augment_dir(pd_df, root_dir):
 
-    for key, column in pd_df.iterrows():
-        row_data = column.values
-        root, ext = os.path.splitext(row_data[0])
-        category_dir = os.path.join(root_dir, str(row_data[1]))
+    if isinstance(pd_df, list):
+        for _tuple in pd_df:
+            file_path, category_id = _tuple
+            filename = os.path.basename(file_path)
 
-        augment_dir = os.path.join(category_dir, root)
-        if not os.path.isdir(augment_dir):
-            os.makedirs(augment_dir)
+            root, ext = os.path.splitext(filename)
+            category_dir = os.path.join(root_dir, str(category_id))
+
+            augment_dir = os.path.join(category_dir, root)
+            if not os.path.isdir(augment_dir):
+                os.makedirs(augment_dir)
+
+    else:
+        for key, column in pd_df.iterrows():
+            row_data = column.values
+            root, ext = os.path.splitext(row_data[0])
+            category_dir = os.path.join(root_dir, str(row_data[1]))
+
+            augment_dir = os.path.join(category_dir, root)
+            if not os.path.isdir(augment_dir):
+                os.makedirs(augment_dir)
 
 
 def crop_and_save(image_info_tuple):
@@ -82,6 +102,7 @@ def rotate_and_save(image_info_tuple):
         # quadrate and crop image
         crop_img = quadrate_image(img).resize((256, 256), Image.ANTIALIAS)
 
+        image_name = image_name.replace("cropped_", "")
         # flip image
         for k, v in ROTATE_TYPE_DICT.items():
             print("[ PREPROCESS ] Now processing: {}_{}".format(k, image_name))
@@ -120,17 +141,31 @@ if __name__ == '__main__':
 
         # make category and augment directory
         if not os.path.isdir(CROPPED_TRAIN_IMAGE_DIR):
+            print("[ PREPROCESS ] Make category directory for train dataset.")
             make_category_dir(category_id_list, CROPPED_TRAIN_IMAGE_DIR)
+            print("[ PREPROCESS ] Make augment directory for train dataset.")
             make_augment_dir(train_data, CROPPED_TRAIN_IMAGE_DIR)
 
         if not os.path.isdir(CROPPED_VAL_IMAGE_DIR):
+            print("[ PREPROCESS ] Make category directory for validation dataset.")
             make_category_dir(category_id_list, CROPPED_VAL_IMAGE_DIR)
+            print("[ PREPROCESS ] Make augment directory for validation dataset.")
             make_augment_dir(val_data, CROPPED_VAL_IMAGE_DIR)
 
     elif args.preprocess_type == "cae":
         # set cropped image dir
         CROPPED_IMAGE_DIR = os.path.join(CROPPED_ROOT_DIR, "train_cae")
         image_dir_path = os.path.join(DATASET_DIR, "unlabeled")
+
+    elif args.preprocess_type == "semi-supervised":
+        CROPPED_IMAGE_DIR = os.path.join(CROPPED_ROOT_DIR, "train_model")
+        CROPPED_SEMI_IMAGE_DIR = os.path.join(CROPPED_IMAGE_DIR, "semi-supervised")
+        image_dir_path = os.path.join(CROPPED_ROOT_DIR, "train_cae")
+
+        # load clf_tran_master.tsv
+        train_df = pd.read_csv(os.path.join(DATASET_DIR, "clf_train_master.tsv"), delimiter="\t")
+        # get category id
+        category_id_list = list(set(train_df["category_id"]))
 
     elif args.preprocess_type == "test":
         # set cropped_image dir
@@ -175,6 +210,50 @@ if __name__ == '__main__':
 
         # crop images in multi process
         p.map(crop_and_save, image_info_tuple_list)
+
+    elif args.preprocess_type == "semi-supervised":
+
+        with open(os.path.join(SEMI_SUPERVISED_DIR, "semi_supervised_label_list.pkl"), "rb") as rf:
+            semi_supervised_label_list = pickle.load(rf)
+
+        if not os.path.isdir(CROPPED_SEMI_IMAGE_DIR):
+            print("[ PREPROCESS ] Make category directory for semi-supervised dataset.")
+            make_category_dir(category_id_list, CROPPED_SEMI_IMAGE_DIR)
+            print("[ PREPROCESS ] Make augment directory for semi-supervised dataset.")
+            make_augment_dir(semi_supervised_label_list, CROPPED_SEMI_IMAGE_DIR)
+
+        image_info_tuple_list = []
+        image_dataset_list = []
+        for _tuple in semi_supervised_label_list:
+            file_path, category_id = _tuple
+            # フルパスからファイル名のみを取り出す
+            filename = os.path.basename(file_path)
+            # ファイル名と拡張子を分離する
+            root, ext = os.path.splitext(filename)
+            augment_dir = os.path.join(CROPPED_SEMI_IMAGE_DIR, str(category_id), root)
+
+            print("[ DEBUG ] image dataset tuple list: ({}, {})".format(os.path.join("train_cae", filename), str(category_id)))
+
+            # multiprocessで処理する用のタプルをappendしている
+            image_info_tuple_list.append((augment_dir, os.path.join(image_dir_path, filename), filename))
+
+            # augment_semi_supervised_label_list.pkl 用。train_cae/croppd_*.jpgのみを格納
+            image_dataset_list.append((os.path.join("train_cae", filename), category_id))
+
+            if args.rotate:
+                filename = filename.replace("cropped_", "")
+                for rotate_type in ROTATE_TYPE_DICT.keys():
+
+                    print("[ DEBUG ] image dataset tuple list: ({}, {})".format(os.path.join("train_model", "semi-supervised",
+                                                                                             str(category_id), root, "cropped_{}_{}".format(rotate_type, filename)), str(category_id)))
+                    image_dataset_list.append((os.path.join("train_model", "semi-supervised", str(category_id), root, "cropped_{}_{}".format(rotate_type, filename)), category_id))
+
+        if args.rotate:
+            # rotate images in multi process
+            p.map(rotate_and_save, image_info_tuple_list)
+
+            with open(os.path.join(SEMI_SUPERVISED_DIR, 'augment_semi_supervised_label_list.pkl'), 'wb') as wf:
+                pickle.dump(image_dataset_list, wf)
 
     # prepare cae data(or test data)
     else:

@@ -15,51 +15,36 @@ class StackedCAE(chainer.Chain):
         super(StackedCAE, self).__init__(
             conv1=L.Convolution2D(3,  96, 11, stride=4),
             bn1=L.BatchNormalization(96),
-
             conv2=L.Convolution2D(96, 256,  5, pad=2),
             bn2=L.BatchNormalization(256),
-
             conv3=L.Convolution2D(256, 384,  3, pad=1),
             bn3=L.BatchNormalization(384),
-
             conv4=L.Convolution2D(384, 384,  3, pad=1),
             bn4=L.BatchNormalization(384),
-
             conv5=L.Convolution2D(384, 384,  3, pad=1),
             bn5=L.BatchNormalization(384),
-
             conv6=L.Convolution2D(384, 384,  3, pad=1),
             bn6=L.BatchNormalization(384),
-
             conv7=L.Convolution2D(384, 256,  3, pad=1),
             bn7=L.BatchNormalization(256),
-
             fc8=L.Linear(9216, 4096),
-            fc9=L.Linear(4096, 4096),
-            fc10=L.Linear(4096, 25),
-
-            fc11=L.Linear(25, 4096),
-            fc12=L.Linear(4096, 4096),
+            fc9=L.Linear(4096, 2048),
+            fc10=L.Linear(2048, 25),
+            fc11=L.Linear(25, 2048),
+            fc12=L.Linear(2048, 4096),
             fc13=L.Linear(4096, 9216),
-
             deconv14=L.Deconvolution2D(256, 384,  3, pad=1),
             bn14=L.BatchNormalization(384),
-
             deconv15=L.Deconvolution2D(384, 384,  3, pad=1),
             bn15=L.BatchNormalization(384),
-
             deconv16=L.Deconvolution2D(384, 384,  3, pad=1),
             bn16=L.BatchNormalization(384),
-
             deconv17=L.Deconvolution2D(384, 384,  3, pad=1),
             bn17=L.BatchNormalization(384),
-
             deconv18=L.Deconvolution2D(384, 256,  3, pad=1),
             bn18=L.BatchNormalization(256),
-
             deconv19=L.Deconvolution2D(256, 96,  5, pad=2),
             bn19=L.BatchNormalization(96),
-
             deconv20=L.Deconvolution2D(96, 3,  11, stride=4),
         )
         self.train = True

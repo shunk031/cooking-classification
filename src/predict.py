@@ -5,26 +5,21 @@ import argparse
 import pickle
 import random
 import csv
+import datetime
 import numpy as np
-
-from PIL import Image
-from multiprocessing import Pool
 
 import chainer
 
-import model
+from PIL import Image
+from multiprocessing import Pool
+from model import archs
+from logger import create_log_dict, save_log
 
 DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../dataset")
-
-archs = {
-    'alex': model.AlexNet,
-    'alexlike': model.AlexLikeNet,
-    'deepalexlike': model.DeepAlexLikeNet,
-    'resnet': model.ResNet,
-}
+RESULT_DIR = os.path.join(os.path.dirname(os.path.realpath("__file__")), "pred_result")
 
 
-class PreprocessedDataset(chainer.dataset.DatasetMixin):
+class PreprocessedUnLabeledDataset(chainer.dataset.DatasetMixin):
 
     def __init__(self, path, root, mean, crop_size, random=False):
         self.base = chainer.datasets.ImageDataset(path, root)
@@ -36,7 +31,7 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
         return len(self.base)
 
     def get_example(self, i):
-        # It reads the i-th image/label pair and return a preprocessed image.
+
         # It applies following preprocesses:
         #     - Cropping (random or center rectangular)
         #     - Random flip
@@ -68,6 +63,22 @@ class PreprocessedDataset(chainer.dataset.DatasetMixin):
 
         return image
 
+
+def predict(model, test_data, use_gpu):
+    if use_gpu >= 0:
+        img = chainer.cuda.cupy.asarray([test_data], dtype=np.float32)
+    else:
+        img = np.array([test_data])
+
+    pred = model.predict(img).data
+
+    if use_gpu >= 0:
+        pred = chainer.cuda.to_cpu(pred)
+    else:
+        pred = pred.data
+
+    return pred
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Predicting convnet from ILSVRC2012 dataset")
@@ -78,6 +89,14 @@ if __name__ == '__main__':
     parser.add_argument('--gpu', '-g', type=int, default=-1)
     parser.add_argument('--mean', '-m', default='train_mean.npy', help='Mean file (computed by compute_mean.py)')
     args = parser.parse_args()
+
+    # logging setting
+    now = datetime.datetime.today()
+    strnow = now.strftime('%Y-%m-%d-%H-%M-%S')
+    log_filename_name = "result_" + strnow
+    log_filename_ext = ".json"
+    log_filename = log_filename_name + log_filename_ext
+    save_log(create_log_dict(args), log_filename)
 
     model = archs[args.arch]()
     print('[ PREPROCESS ] Load model from {}'.format(args.trained_model))
@@ -97,30 +116,22 @@ if __name__ == '__main__':
     print("[ PREPROCESS ] Load the datasets and mean file.")
     mean = np.load(args.mean)
     # print("mean shape".format(mean.shape))
-    test_datasets = PreprocessedDataset(test_image_dataset_list, args.root, mean, model.insize)
+    test_datasets = PreprocessedUnLabeledDataset(test_image_dataset_list, args.root, mean, model.insize)
 
     model.train = False
     pred_results = []
     for i in range(len(test_datasets)):
         test_data = test_datasets[i]
-
-        if args.gpu >= 0:
-            img = chainer.cuda.cupy.asarray([test_data], dtype=np.float32)
-        else:
-            img = np.array([test_data])
-
-        pred = model.predict(img).data
-
-        if args.gpu >= 0:
-            pred = chainer.cuda.to_cpu(pred)
-        else:
-            pred = pred.data
+        pred = predict(model, test_data, args.gpu)
 
         pred_idx = np.argsort(pred)[0][::-1][0]
         print("test no. {:5}: predict: {}".format(i, pred_idx))
         pred_results.append([i, pred_idx])
 
-    with open("result.csv", "w") as wf:
+    if not os.path.isdir(RESULT_DIR):
+        os.mkdir(RESULT_DIR)
+
+    with open(os.path.join(RESULT_DIR, strnow + "_result.csv"), "w") as wf:
         writer = csv.writer(wf)
 
         for result in pred_results:

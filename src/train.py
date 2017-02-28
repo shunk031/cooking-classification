@@ -4,9 +4,10 @@ import os
 import argparse
 import random
 import pickle
+import datetime
 
-from sklearn.model_selection import train_test_split
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 import chainer
 from chainer import training
@@ -15,11 +16,12 @@ from chainer.training import extensions
 
 import model
 from model import archs
+from logger import create_log_dict, save_log
 
 DATASET_DIR = os.path.join(os.path.dirname(os.path.abspath("__file__")), "../dataset")
 
 
-class PreprocessedDataset(chainer.dataset.DatasetMixin):
+class PreprocessedLabeledDataset(chainer.dataset.DatasetMixin):
 
     def __init__(self, path, root, mean, crop_size, random=True):
         self.base = chainer.datasets.LabeledImageDataset(path, root)
@@ -100,9 +102,17 @@ if __name__ == '__main__':
                         help='Root directory path of image files')
     parser.add_argument('--val_batchsize', '-b', type=int, default=64,
                         help='Validation minibatch size')
+    parser.add_argument('--comment', type=str)
     parser.add_argument('--test', action='store_true')
     parser.set_defaults(test=False)
     args = parser.parse_args()
+
+    # logging setting
+    now = datetime.datetime.today()
+    log_filename_name = "cooking_classification_" + now.strftime('%Y-%m-%d-%H-%M-%S')
+    log_filename_ext = ".json"
+    log_filename = log_filename_name + log_filename_ext
+    save_log(create_log_dict(args), log_filename)
 
     model = archs[args.arch]()
     if args.initmodel:
@@ -124,8 +134,8 @@ if __name__ == '__main__':
     # Load the datasets and mean file
     print("[ PREPROCESS ] Load the datasets and mean file.")
     mean = np.load(args.mean)
-    train = PreprocessedDataset(train_tuples, args.root, mean, 227)
-    val = PreprocessedDataset(val_tuples, args.root, mean, 227, False)
+    train = PreprocessedLabeledDataset(train_tuples, args.root, mean, 227)
+    val = PreprocessedLabeledDataset(val_tuples, args.root, mean, 227, False)
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
     train_iter = chainer.iterators.MultiprocessIterator(
@@ -135,10 +145,10 @@ if __name__ == '__main__':
 
     # Set up an optimizer
     print("[ PREPROCESS ] Set up an optimizer.")
-    if args.arch == "resnet":
+    if args.arch == "impresnet":
         optimizer = chainer.optimizers.Adam()
     else:
-        optimizer = chainer.optimizers.MomentumSGD(lr=0.005, momentum=0.9)
+        optimizer = chainer.optimizers.MomentumSGD(lr=0.001, momentum=0.9)
     optimizer.setup(model)
 
     # Set up a trainer
@@ -154,7 +164,7 @@ if __name__ == '__main__':
     trainer.extend(extensions.dump_graph('main/loss'))
     trainer.extend(extensions.snapshot(), trigger=val_interval)
     trainer.extend(extensions.snapshot_object(
-        model, args.arch + '_model_iter_{.updater.iteration}'), trigger=val_interval)
+        model, now.strftime('%Y-%m-%d-%H-%M-%S') + "_" + args.arch + "_" + '_model_iter_{.updater.iteration}'), trigger=val_interval)
 
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
@@ -174,7 +184,7 @@ if __name__ == '__main__':
     trainer.run()
 
     # Save the trained model
-    serializers.save_npz(os.path.join(args.out, "{}_model_final.npz".format(args.arch)), model)
-    serializers.save_npz(os.path.join(args.out, "{}_optimaizer_final.npz".format(args.arch)), optimizer)
+    serializers.save_npz(os.path.join(args.out, now.strftime('%Y-%m-%d-%H-%M-%S') + "_{}_model_final.npz".format(args.arch)), model)
+    serializers.save_npz(os.path.join(args.out, now.strftime('%Y-%m-%d-%H-%M-%S') + "_{}_optimaizer_final.npz".format(args.arch)), optimizer)
 
     print("[ FINISH ] Training is Finished.")
