@@ -214,7 +214,6 @@ class BottleNeckB(chainer.Chain):
 class Block(chainer.Chain):
 
     def __init__(self, layer, in_size, ch, out_size, stride=2, initialW=None):
-        print("[ PREPROCESS ] Called Block#__init__")
         super(Block, self).__init__()
         links = [('a', BottleNeckA(in_size, ch, out_size, stride, initialW))]
         for i in range(layer - 1):
@@ -396,7 +395,6 @@ class ImpBottleNeckB(chainer.Chain):
 class ImpBlock(chainer.Chain):
 
     def __init__(self, layer, in_size, ch, out_size, stride=2, initialW=None):
-        print("[ PREPROCESS ] Called ImpBlock#__init__")
         super(ImpBlock, self).__init__()
         links = [('a', ImpBottleNeckA(in_size, ch, out_size, stride, initialW))]
         for i in range(layer - 1):
@@ -418,7 +416,7 @@ class ImpResNet(chainer.Chain):
 
     insize = 227
 
-    def __init__(self, pretrained_resnet="auto", pretrained_cae="auto"):
+    def __init__(self, pretrained_resnet="auto", pretrained_cae=False):
         if pretrained_resnet:
             kwargs = {'initialW': constant.Zero()}
         else:
@@ -536,7 +534,7 @@ class ImpResNet101(chainer.Chain):
 
     insize = 227
 
-    def __init__(self, pretrained_resnet="auto", pretrained_cae="auto"):
+    def __init__(self, pretrained_resnet="auto", pretrained_cae=False):
         if pretrained_resnet:
             kwargs = {'initialW': constant.Zero()}
         else:
